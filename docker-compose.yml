@@ -1,0 +1,54 @@
+services:
+  backend:
+    build: .
+    container_name: smart_home_backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql://admin:admin123@db:5432/smart_home
+      SECRET_KEY: "your-secret-key-here-change-in-production"
+    depends_on:
+      - db
+    networks:
+      - smart_home_network
+    volumes:
+      - .:/app
+    working_dir: /app
+
+  db:
+    image: postgres:16
+    container_name: smart_home_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin123
+      POSTGRES_DB: smart_home
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - smart_home_network
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: smart_home_pgadmin
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "5050:80"
+    depends_on:
+      - db
+    networks:
+      - smart_home_network
+
+volumes:
+  postgres_data:
+
+networks:
+  smart_home_network:
+    driver: bridge
+    name: smart_home
