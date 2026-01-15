@@ -1,4 +1,4 @@
-from typing import Optional, List, Dict
+from typing import Optional, List, Dict, Union
 
 from pydantic import BaseModel
 from datetime import datetime
@@ -140,15 +140,14 @@ class RoomResponse(RoomBase):
     class Config:
         orm_mode = True
 
-
-# ---------- Комнаты пользователя ----------
 class SensorInfo(BaseModel):
-    id: str
-    type: str  # temperature, light, gas, humidity, ventilation, motion
+    id: int  # Изменено с str на int
+    type: str # temperature, light, gas, humidity, ventilation, motion
     name: str
     room_id: int
     room_name: str
 
+# ---------- Комнаты пользователя ----------
 class UserRoomsResponse(BaseModel):
     id: int
     name: str
@@ -246,3 +245,29 @@ class MotionSensorResponse(BaseModel):
 
     class Config:
         orm_mode = True
+
+# ---------- Новые схемы для универсального эндпоинта ----------
+class SensorData(BaseModel):
+    """Данные от одного датчика"""
+    sensor_id: int  # Уникальный ID датчика в комнате
+    type: str  # temperature, light, gas, humidity, ventilation, motion
+    value: Optional[Union[float, bool, str, int]] = None
+    is_on: Optional[bool] = None
+    ppm: Optional[float] = None
+    humidity_level: Optional[float] = None
+    fan_speed: Optional[float] = None
+    trigger_time: Optional[datetime] = None
+
+class ArduinoDataCreate(BaseModel):
+    """Данные от Arduino для всех датчиков в комнате"""
+    room_id: int  # Уникальный ID комнаты
+    room_name: str  # Название комнаты для проверки
+    sensors: List[SensorData]  # Все датчики в комнате
+
+class ArduinoDataResponse(BaseModel):
+    """Ответ на успешную обработку данных от Arduino"""
+    room_id: int
+    room_name: str
+    processed_sensors: int
+    success: bool
+    message: str

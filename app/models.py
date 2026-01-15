@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, Float, ForeignKey, DateTime, JSON
+from sqlalchemy import Column, Integer, String, Boolean, Float, ForeignKey, DateTime, JSON, UniqueConstraint
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declarative_base
 from datetime import datetime
@@ -92,59 +92,72 @@ class TemperatureSensor(Base):
     __tablename__ = "temperature_sensors"
 
     id = Column(Integer, primary_key=True, index=True)
-    sensor_id = Column(String, unique=True, nullable=False)
+    sensor_id = Column(Integer, nullable=False)  # Изменено с String на Integer
     room_id = Column(Integer, ForeignKey("rooms.id"))
     value = Column(Float, nullable=False)
 
     room = relationship("Room", back_populates="temperature_sensors")
 
+    # Добавить уникальность комбинации room_id + sensor_id
+    __table_args__ = (UniqueConstraint('room_id', 'sensor_id', name='uq_room_temp_sensor'),)
+
+
 class LightSensor(Base):
     __tablename__ = "light_sensors"
+    __table_args__ = (UniqueConstraint('room_id', 'sensor_id', name='uq_room_light_sensor'),)
 
     id = Column(Integer, primary_key=True, index=True)
-    sensor_id = Column(String, unique=True, nullable=False)
+    sensor_id = Column(Integer, nullable=False)  # Изменено
     room_id = Column(Integer, ForeignKey("rooms.id"))
     is_on = Column(Boolean, nullable=False)
 
     room = relationship("Room", back_populates="light_sensors")
 
+
 class GasSensor(Base):
     __tablename__ = "gas_sensors"
+    __table_args__ = (UniqueConstraint('room_id', 'sensor_id', name='uq_room_gas_sensor'),)
 
     id = Column(Integer, primary_key=True, index=True)
-    sensor_id = Column(String, unique=True, nullable=False)
+    sensor_id = Column(Integer, nullable=False)  # Изменено
     room_id = Column(Integer, ForeignKey("rooms.id"))
     ppm = Column(Float, nullable=False)
     status = Column(String, nullable=False)
 
     room = relationship("Room", back_populates="gas_sensors")
 
+
 class HumiditySensor(Base):
     __tablename__ = "humidity_sensors"
+    __table_args__ = (UniqueConstraint('room_id', 'sensor_id', name='uq_room_humidity_sensor'),)
 
     id = Column(Integer, primary_key=True, index=True)
-    sensor_id = Column(String, unique=True, nullable=False)
+    sensor_id = Column(Integer, nullable=False)  # Изменено
     room_id = Column(Integer, ForeignKey("rooms.id"))
     humidity_level = Column(Float, nullable=False)
 
     room = relationship("Room", back_populates="humidity_sensors")
 
+
 class VentilationSensor(Base):
     __tablename__ = "ventilation_sensors"
+    __table_args__ = (UniqueConstraint('room_id', 'sensor_id', name='uq_room_ventilation_sensor'),)
 
     id = Column(Integer, primary_key=True, index=True)
-    sensor_id = Column(String, unique=True, nullable=False)
+    sensor_id = Column(Integer, nullable=False)  # Изменено
     room_id = Column(Integer, ForeignKey("rooms.id"))
     fan_speed = Column(Float, nullable=False)
     is_on = Column(Boolean, nullable=False)
 
     room = relationship("Room", back_populates="ventilation_sensors")
 
+
 class MotionSensor(Base):
     __tablename__ = "motion_sensors"
+    __table_args__ = (UniqueConstraint('room_id', 'sensor_id', name='uq_room_motion_sensor'),)
 
     id = Column(Integer, primary_key=True, index=True)
-    sensor_id = Column(String, unique=True, nullable=False)
+    sensor_id = Column(Integer, nullable=False)  # Изменено
     room_id = Column(Integer, ForeignKey("rooms.id"))
     trigger_time = Column(DateTime, nullable=False)
 
