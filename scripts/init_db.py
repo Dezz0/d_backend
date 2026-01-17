@@ -13,8 +13,10 @@ from app.models import User
 # ---------- Генерация случайных строк ----------
 def generate_random_string(length=3):
     """Генерирует случайную строку из букв и цифр"""
-    chars = string.ascii_letters + string.digits
-    return ''.join(random.choice(chars) for _ in range(length))
+    # chars = string.ascii_letters + string.digits
+    # return ''.join(random.choice(chars) for _ in range(length))
+    """Пароль для админа во время тестирования"""
+    return 'admin'
 
 
 ADMIN_LOGIN = "admin"
