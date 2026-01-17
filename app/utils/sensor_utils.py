@@ -2,8 +2,8 @@ from sqlalchemy.orm import Session
 from app import models
 from datetime import datetime
 
-"""Создать комнату на основе ID из заявки"""
 def create_room_from_application(db: Session, room_id: int) -> models.Room:
+    """Создать комнату на основе ID из заявки"""
     if room_id not in models.ROOM_TYPES:
         raise ValueError(f"Invalid room ID: {room_id}")
 
@@ -22,10 +22,15 @@ def create_room_from_application(db: Session, room_id: int) -> models.Room:
     return room
 
 
-"""Создать датчик на основе данных из заявки"""
+def create_sensor_from_application(db: Session, sensor_type: str, sensor_num: int, room_id: int) -> bool:
+    """
+    Создать датчик на основе данных из заявки
 
-
-def create_sensor_from_application(db: Session, sensor_type: str, sensor_id: str, room_id: int) -> bool:
+    Args:
+        sensor_type: тип датчика (temperature, light, etc.)
+        sensor_num: порядковый номер датчика в комнате (целое число)
+        room_id: ID комнаты
+    """
     sensor_models = {
         "temperature": models.TemperatureSensor,
         "light": models.LightSensor,
@@ -40,9 +45,10 @@ def create_sensor_from_application(db: Session, sensor_type: str, sensor_id: str
 
     sensor_model = sensor_models[sensor_type]
 
-    # Проверяем, не существует ли уже датчик
+    # Проверяем, не существует ли уже датчик с таким sensor_num в этой комнате
     existing_sensor = db.query(sensor_model).filter(
-        sensor_model.sensor_id == sensor_id
+        sensor_model.room_id == room_id,
+        sensor_model.sensor_id == sensor_num
     ).first()
 
     if existing_sensor:
@@ -51,39 +57,39 @@ def create_sensor_from_application(db: Session, sensor_type: str, sensor_id: str
     # Создаем новый датчик с default значением в зависимости от типа
     if sensor_type == "temperature":
         sensor = sensor_model(
-            sensor_id=sensor_id,
+            sensor_id=sensor_num,  # Используем sensor_num как целое число
             room_id=room_id,
             value=20.0  # комнатная температура
         )
     elif sensor_type == "light":
         sensor = sensor_model(
-            sensor_id=sensor_id,
+            sensor_id=sensor_num,
             room_id=room_id,
             is_on=False
         )
     elif sensor_type == "gas":
         sensor = sensor_model(
-            sensor_id=sensor_id,
+            sensor_id=sensor_num,
             room_id=room_id,
             ppm=400.0,  # нормальный уровень CO2
             status="уличный воздух"
         )
     elif sensor_type == "humidity":
         sensor = sensor_model(
-            sensor_id=sensor_id,
+            sensor_id=sensor_num,
             room_id=room_id,
             humidity_level=50.0  # комфортная влажность
         )
     elif sensor_type == "ventilation":
         sensor = sensor_model(
-            sensor_id=sensor_id,
+            sensor_id=sensor_num,
             room_id=room_id,
             fan_speed=0.0,
             is_on=False
         )
     elif sensor_type == "motion":
         sensor = sensor_model(
-            sensor_id=sensor_id,
+            sensor_id=sensor_num,
             room_id=room_id,
             trigger_time=datetime.utcnow()
         )

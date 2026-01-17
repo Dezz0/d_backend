@@ -277,25 +277,27 @@ def update_application_status(
 
         for room_id in application.rooms:
             try:
-                # Используем вашу утилиту для создания комнаты
+                # Создаем комнату
                 room = create_room_from_application(db, room_id)
                 created_room_ids.append(room.id)
 
                 # Создаем датчики для этой комнаты
-                # Внимание: sensors может быть dict с ключами как строками или числами
                 sensor_ids = []
                 if isinstance(application.sensors, dict):
-                    # Пробуем оба варианта ключа
-                    sensor_ids = application.sensors.get(str(room_id), []) or application.sensors.get(room_id, [])
-                elif isinstance(application.sensors, list):
-                    # Старый формат
-                    sensor_ids = application.sensors
+                    # Пробуем оба варианта ключа (строковый и числовой)
+                    room_key = str(room_id)
+                    if room_key in application.sensors:
+                        sensor_ids = application.sensors[room_key]
+                    elif room_id in application.sensors:
+                        sensor_ids = application.sensors[room_id]
 
-                for sensor_id in sensor_ids:
-                    sensor_type_name = models.SENSOR_TYPES.get(sensor_id)
+                # Для каждого датчика в комнате создаем отдельный сенсор с порядковым номером
+                for idx, sensor_type_id in enumerate(sensor_ids, start=1):
+                    sensor_type_name = models.SENSOR_TYPES.get(sensor_type_id)
                     if not sensor_type_name:
                         continue
 
+                    # Маппинг названий типов датчиков на ключи
                     sensor_type_map = {
                         "Датчик температуры": "temperature",
                         "Датчик освещения": "light",
@@ -304,12 +306,11 @@ def update_application_status(
                         "Датчик вентиляции": "ventilation",
                         "Датчик движения": "motion"
                     }
-                    sensor_type = sensor_type_map.get(sensor_type_name)
-                    if sensor_type:
-                        # Генерируем уникальный ID датчика
-                        generated_sensor_id = f"{sensor_type}_{room.id}_{application.user_id}_{sensor_id}"
-                        # Используем вашу утилиту для создания датчика
-                        create_sensor_from_application(db, sensor_type, generated_sensor_id, room.id)
+
+                    sensor_type_key = sensor_type_map.get(sensor_type_name)
+                    if sensor_type_key:
+                        # Используем idx как порядковый номер датчика в комнате
+                        create_sensor_from_application(db, sensor_type_key, idx, room.id)
 
             except ValueError as e:
                 print(f"Error creating room {room_id}: {e}")

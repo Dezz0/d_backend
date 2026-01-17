@@ -130,75 +130,69 @@ def get_user_rooms(
         sensors = []
 
         # Температурные датчики
-        for sensor in room.temperature_sensors:
-            if str(current_user.id) in sensor.sensor_id:
-                sensors.append({
-                    "id": sensor.sensor_id,
-                    "type": "temperature",
-                    "name": "Датчик температуры",
-                    "room_id": room.id,
-                    "room_name": room.name
-                })
+        for idx, sensor in enumerate(room.temperature_sensors, start=1):
+            sensors.append(schemas.SensorInfo(
+                id=sensor.sensor_id,  # Это теперь число
+                type="temperature",
+                name=f"Датчик температуры {idx}",
+                room_id=room.id,
+                room_name=room.name
+            ))
 
         # Датчики освещения
-        for sensor in room.light_sensors:
-            if str(current_user.id) in sensor.sensor_id:
-                sensors.append({
-                    "id": sensor.sensor_id,
-                    "type": "light",
-                    "name": "Датчик освещения",
-                    "room_id": room.id,
-                    "room_name": room.name
-                })
+        for idx, sensor in enumerate(room.light_sensors, start=1):
+            sensors.append(schemas.SensorInfo(
+                id=sensor.sensor_id,
+                type="light",
+                name=f"Датчик освещения {idx}",
+                room_id=room.id,
+                room_name=room.name
+            ))
 
         # Датчики газа
-        for sensor in room.gas_sensors:
-            if str(current_user.id) in sensor.sensor_id:
-                sensors.append({
-                    "id": sensor.sensor_id,
-                    "type": "gas",
-                    "name": "Датчик газа",
-                    "room_id": room.id,
-                    "room_name": room.name
-                })
+        for idx, sensor in enumerate(room.gas_sensors, start=1):
+            sensors.append(schemas.SensorInfo(
+                id=sensor.sensor_id,
+                type="gas",
+                name=f"Датчик газа {idx}",
+                room_id=room.id,
+                room_name=room.name
+            ))
 
         # Датчики влажности
-        for sensor in room.humidity_sensors:
-            if str(current_user.id) in sensor.sensor_id:
-                sensors.append({
-                    "id": sensor.sensor_id,
-                    "type": "humidity",
-                    "name": "Датчик влажности",
-                    "room_id": room.id,
-                    "room_name": room.name
-                })
+        for idx, sensor in enumerate(room.humidity_sensors, start=1):
+            sensors.append(schemas.SensorInfo(
+                id=sensor.sensor_id,
+                type="humidity",
+                name=f"Датчик влажности {idx}",
+                room_id=room.id,
+                room_name=room.name
+            ))
 
         # Датчики вентиляции
-        for sensor in room.ventilation_sensors:
-            if str(current_user.id) in sensor.sensor_id:
-                sensors.append({
-                    "id": sensor.sensor_id,
-                    "type": "ventilation",
-                    "name": "Датчик вентиляции",
-                    "room_id": room.id,
-                    "room_name": room.name
-                })
+        for idx, sensor in enumerate(room.ventilation_sensors, start=1):
+            sensors.append(schemas.SensorInfo(
+                id=sensor.sensor_id,
+                type="ventilation",
+                name=f"Датчик вентиляции {idx}",
+                room_id=room.id,
+                room_name=room.name
+            ))
 
         # Датчики движения
-        for sensor in room.motion_sensors:
-            if str(current_user.id) in sensor.sensor_id:
-                sensors.append({
-                    "id": sensor.sensor_id,
-                    "type": "motion",
-                    "name": "Датчик движения",
-                    "room_id": room.id,
-                    "room_name": room.name
-                })
+        for idx, sensor in enumerate(room.motion_sensors, start=1):
+            sensors.append(schemas.SensorInfo(
+                id=sensor.sensor_id,
+                type="motion",
+                name=f"Датчик движения {idx}",
+                room_id=room.id,
+                room_name=room.name
+            ))
 
-        rooms_data.append({
-            "id": room.id,
-            "name": room.name,
-            "sensors": sensors
-        })
+        rooms_data.append(schemas.UserRoomsResponse(
+            id=room.id,
+            name=room.name,
+            sensors=sensors
+        ))
 
     return rooms_data

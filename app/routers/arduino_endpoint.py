@@ -18,6 +18,7 @@ def receive_arduino_data(
     Универсальный эндпоинт для приема данных от Arduino.
     Принимает все данные от датчиков в комнате одним запросом.
     """
+    print('input data', data)
     # Проверяем, что комната существует
     room = db.query(models.Room).filter(
         models.Room.id == data.room_id,

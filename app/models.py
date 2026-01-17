@@ -8,15 +8,12 @@ Base = declarative_base()
 # Словари для комнат и датчиков
 ROOM_TYPES = {
     1: "Прихожая",
-    2: "Гостиная",
-    3: "Кухня",
-    4: "Спальня",
-    5: "Ванная",
-    6: "Туалет",
-    7: "Балкон",
-    8: "Коридор",
-    9: "Кабинет",
-    10: "Детская"
+    2: "Холл",
+    3: "Гостиная",
+    4: "Кухня",
+    5: "Спальня",
+    6: "Техническое помещение",
+    7: "Санузел",
 }
 
 SENSOR_TYPES = {
@@ -35,9 +32,9 @@ class User(Base):
     id = Column(Integer, primary_key=True, index=True)
     login = Column(String, unique=True, nullable=False)
     hashed_password = Column(String, nullable=False)
-    first_name = Column(String, nullable=True)  # Новое поле: имя
-    last_name = Column(String, nullable=True)   # Новое поле: фамилия
-    middle_name = Column(String, nullable=True) # Новое поле: отчество
+    first_name = Column(String, nullable=True)
+    last_name = Column(String, nullable=True)
+    middle_name = Column(String, nullable=True)
     is_active = Column(Boolean, default=True)
     is_admin = Column(Boolean, default=False)
     application_submitted = Column(Boolean, default=False)
@@ -53,7 +50,7 @@ class Application(Base):
     user_id = Column(Integer, ForeignKey("users.id"))
     rooms = Column(JSON, nullable=False)
     sensors = Column(JSON, nullable=False)
-    created_room_ids = Column(JSON, nullable=True)  # Новое поле для хранения ID созданных комнат
+    created_room_ids = Column(JSON, nullable=True)
     status = Column(String, default="pending")
     rejection_comment = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
