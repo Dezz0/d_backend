@@ -12,7 +12,6 @@ SENSOR_MODELS = {
     "gas": models.GasSensor,
     "humidity": models.HumiditySensor,
     "ventilation": models.VentilationSensor,
-    "motion": models.MotionSensor
 }
 
 @router.get("/", response_model=list[schemas.RoomResponse])
@@ -38,8 +37,7 @@ def get_rooms(
             sensors_info.append({"type": "humidity", "count": len(room.humidity_sensors)})
         if room.ventilation_sensors:
             sensors_info.append({"type": "ventilation", "count": len(room.ventilation_sensors)})
-        if room.motion_sensors:
-            sensors_info.append({"type": "motion", "count": len(room.motion_sensors)})
+
 
         result.append({
             "id": room.id,
@@ -179,15 +177,6 @@ def get_user_rooms(
                 room_name=room.name
             ))
 
-        # Датчики движения
-        for idx, sensor in enumerate(room.motion_sensors, start=1):
-            sensors.append(schemas.SensorInfo(
-                id=sensor.sensor_id,
-                type="motion",
-                name=f"Датчик движения {idx}",
-                room_id=room.id,
-                room_name=room.name
-            ))
 
         rooms_data.append(schemas.UserRoomsResponse(
             id=room.id,
@@ -196,3 +185,35 @@ def get_user_rooms(
         ))
 
     return rooms_data
+
+"""Получить комнаты и датчики пользователя для arduino"""
+@router.get("/{room_id}/devices", response_model=schemas.RoomDevicesResponse)
+def get_room_devices(
+    room_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    room = db.query(models.Room).filter(models.Room.id == room_id).first()
+
+    if not room:
+        raise HTTPException(status_code=404, detail="Room not found")
+
+    devices = {}
+
+    for light in room.light_sensors:
+        devices[light.sensor_id] = {
+            "type": "light",
+            "is_on": light.is_on
+        }
+
+    for fan in room.ventilation_sensors:
+        devices[fan.sensor_id] = {
+            "type": "ventilation",
+            "is_on": fan.is_on
+        }
+
+    return {
+        "room_id": room.id,
+        "room_name": room.name,
+        "devices": devices
+    }

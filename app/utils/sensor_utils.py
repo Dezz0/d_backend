@@ -17,7 +17,7 @@ def create_room_from_application(db: Session, room_id: int) -> models.Room:
     # Создаем новую комнату
     room = models.Room(name=room_name)
     db.add(room)
-    db.commit()
+    db.flush()
     db.refresh(room)
     return room
 
@@ -37,7 +37,6 @@ def create_sensor_from_application(db: Session, sensor_type: str, sensor_num: in
         "gas": models.GasSensor,
         "humidity": models.HumiditySensor,
         "ventilation": models.VentilationSensor,
-        "motion": models.MotionSensor
     }
 
     if sensor_type not in sensor_models:
@@ -71,8 +70,8 @@ def create_sensor_from_application(db: Session, sensor_type: str, sensor_num: in
         sensor = sensor_model(
             sensor_id=sensor_num,
             room_id=room_id,
-            ppm=400.0,  # нормальный уровень CO2
-            status="уличный воздух"
+            value=False,
+            status="данных нет"
         )
     elif sensor_type == "humidity":
         sensor = sensor_model(
@@ -84,18 +83,11 @@ def create_sensor_from_application(db: Session, sensor_type: str, sensor_num: in
         sensor = sensor_model(
             sensor_id=sensor_num,
             room_id=room_id,
-            fan_speed=0.0,
             is_on=False
-        )
-    elif sensor_type == "motion":
-        sensor = sensor_model(
-            sensor_id=sensor_num,
-            room_id=room_id,
-            trigger_time=datetime.utcnow()
         )
     else:
         return False
 
     db.add(sensor)
-    db.commit()
+    db.flush()
     return True

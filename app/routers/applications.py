@@ -229,10 +229,10 @@ def get_application(
 
 @router.put("/{application_id}")
 def update_application_status(
-        application_id: int,
-        status_data: schemas.ApplicationUpdate,
-        current_user: models.User = Depends(get_current_user),
-        db: Session = Depends(get_db)
+    application_id: int,
+    status_data: schemas.ApplicationUpdate,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
 ):
     """Обновить статус заявки (только для админа)"""
     if not current_user.is_admin:
@@ -257,69 +257,70 @@ def update_application_status(
             detail="Status must be 'approved' or 'rejected'"
         )
 
-    # Обновляем статус заявки
-    application.status = status_data.status
+    try:
+        # Обновляем статус и комментарий
+        application.status = status_data.status
+        application.rejection_comment = status_data.rejection_comment if status_data.status == "rejected" else None
 
-    # Если статус "rejected" и есть комментарий, сохраняем его
-    if status_data.status == "rejected":
-        application.rejection_comment = status_data.rejection_comment
-    else:
-        # Для approved очищаем комментарий, если он был
-        application.rejection_comment = None
+        if status_data.status == "approved":
+            # ОДОБРЕНИЕ: application_submitted = true
+            user = db.query(models.User).filter(models.User.id == application.user_id).first()
+            user.application_submitted = True
 
-    if status_data.status == "approved":
-        # ОДОБРЕНИЕ: application_submitted = true
-        user = db.query(models.User).filter(models.User.id == application.user_id).first()
-        user.application_submitted = True
+            created_room_ids = []
 
-        # Создаем комнаты и датчики из заявки
-        created_room_ids = []  # Будем хранить ID созданных комнат
+            for room_id in application.rooms:
+                try:
+                    # создаем комнату
+                    room = create_room_from_application(db, room_id)
+                    created_room_ids.append(room.id)
 
-        for room_id in application.rooms:
-            try:
-                # Создаем комнату
-                room = create_room_from_application(db, room_id)
-                created_room_ids.append(room.id)
+                    # получаем датчики
+                    sensor_ids = []
+                    if isinstance(application.sensors, dict):
+                        room_key = str(room_id)
+                        if room_key in application.sensors:
+                            sensor_ids = application.sensors[room_key]
+                        elif room_id in application.sensors:
+                            sensor_ids = application.sensors[room_id]
 
-                # Создаем датчики для этой комнаты
-                sensor_ids = []
-                if isinstance(application.sensors, dict):
-                    # Пробуем оба варианта ключа (строковый и числовой)
-                    room_key = str(room_id)
-                    if room_key in application.sensors:
-                        sensor_ids = application.sensors[room_key]
-                    elif room_id in application.sensors:
-                        sensor_ids = application.sensors[room_id]
+                    # создаем датчики
+                    for idx, sensor_type_id in enumerate(sensor_ids, start=1):
+                        sensor_type_name = models.SENSOR_TYPES.get(sensor_type_id)
+                        if not sensor_type_name:
+                            continue
 
-                # Для каждого датчика в комнате создаем отдельный сенсор с порядковым номером
-                for idx, sensor_type_id in enumerate(sensor_ids, start=1):
-                    sensor_type_name = models.SENSOR_TYPES.get(sensor_type_id)
-                    if not sensor_type_name:
-                        continue
+                        sensor_type_map = {
+                            "Датчик температуры": "temperature",
+                            "Датчик освещения": "light",
+                            "Датчик газа": "gas",
+                            "Датчик влажности": "humidity",
+                            "Датчик вентиляции": "ventilation",
+                        }
 
-                    # Маппинг названий типов датчиков на ключи
-                    sensor_type_map = {
-                        "Датчик температуры": "temperature",
-                        "Датчик освещения": "light",
-                        "Датчик газа": "gas",
-                        "Датчик влажности": "humidity",
-                        "Датчик вентиляции": "ventilation",
-                        "Датчик движения": "motion"
-                    }
+                        sensor_type_key = sensor_type_map.get(sensor_type_name)
+                        if sensor_type_key:
+                            try:
+                                create_sensor_from_application(db, sensor_type_key, idx, room.id)
+                            except Exception as e:
+                                print(f"Error creating sensor {sensor_type_key} in room {room.id}: {e}")
+                                continue
 
-                    sensor_type_key = sensor_type_map.get(sensor_type_name)
-                    if sensor_type_key:
-                        # Используем idx как порядковый номер датчика в комнате
-                        create_sensor_from_application(db, sensor_type_key, idx, room.id)
+                except Exception as e:
+                    print(f"Error creating room {room_id}: {e}")
+                    continue
 
-            except ValueError as e:
-                print(f"Error creating room {room_id}: {e}")
-                continue
+            application.created_room_ids = created_room_ids
 
-        # Сохраняем ID созданных комнат в заявке
-        application.created_room_ids = created_room_ids
+        db.commit()
+        db.refresh(application)
 
-    db.commit()
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error updating application: {str(e)}"
+        )
 
     return {
         "message": f"Application {status_data.status} successfully",

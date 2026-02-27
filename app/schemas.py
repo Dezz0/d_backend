@@ -142,7 +142,7 @@ class RoomResponse(RoomBase):
 
 class SensorInfo(BaseModel):
     id: int  # Изменено с str на int
-    type: str # temperature, light, gas, humidity, ventilation, motion
+    type: str # temperature, light, gas, humidity, ventilation
     name: str
     room_id: int
     room_name: str
@@ -182,21 +182,15 @@ class LightSensorResponse(BaseModel):
         orm_mode = True
 
 # ---------- Угарный газ ----------
-class GasStatus(str, Enum):
-    NORMAL = "уличный воздух"
-    RECOMMENDED = "рекомендованная концентрация"
-    WARNING = "предельная концентрация"
-    DANGER = "смертельная концентрация"
-
 class GasSensorCreate(BaseModel):
     sensor_id: str
     room_name: str
-    ppm: float
+    value: bool
 
 class GasSensorResponse(BaseModel):
     sensor_id: str
     room_name: str
-    ppm: float
+    value: bool
     status: str
 
     class Config:
@@ -220,42 +214,24 @@ class HumiditySensorResponse(BaseModel):
 class VentilationSensorCreate(BaseModel):
     sensor_id: str
     room_name: str
-    fan_speed: float
     is_on: bool
 
 class VentilationSensorResponse(BaseModel):
     sensor_id: str
     room_name: str
-    fan_speed: float
     is_on: bool
 
     class Config:
         orm_mode = True
 
-# ---------- Движение ----------
-class MotionSensorCreate(BaseModel):
-    sensor_id: str
-    room_name: str
-    trigger_time: datetime
-
-class MotionSensorResponse(BaseModel):
-    sensor_id: str
-    room_name: str
-    trigger_time: datetime
-
-    class Config:
-        orm_mode = True
-
-# ---------- Новые схемы для универсального эндпоинта ----------
+# ---------- Схемы для универсального эндпоинта ----------
 class SensorData(BaseModel):
     """Данные от одного датчика"""
     sensor_id: int  # Уникальный ID датчика в комнате
-    type: str  # temperature, light, gas, humidity, ventilation, motion
+    type: str  # temperature, light, gas, humidity, ventilation
     value: Optional[Union[float, bool, str, int]] = None
     is_on: Optional[bool] = None
-    ppm: Optional[float] = None
     humidity_level: Optional[float] = None
-    fan_speed: Optional[float] = None
     trigger_time: Optional[datetime] = None
 
 class ArduinoDataCreate(BaseModel):
@@ -271,3 +247,47 @@ class ArduinoDataResponse(BaseModel):
     processed_sensors: int
     success: bool
     message: str
+
+# ---------- Температуры вне дома ----------
+class OutdoorTemperatureItem(BaseModel):
+    side: str  # north, south, west, east
+    value: float
+
+
+class OutdoorTemperatureCreate(BaseModel):
+    temperatures: List[OutdoorTemperatureItem]
+
+
+class OutdoorTemperatureResponse(BaseModel):
+    temperatures: List[OutdoorTemperatureItem]
+    min_temperature: float
+    max_temperature: float
+    created_at: datetime
+
+    class Config:
+        orm_mode = True
+
+# ---------- Схемы для управления домом через приложение ----------
+class HomeControlModeResponse(BaseModel):
+    is_manual: bool
+    updated_at: datetime
+
+    class Config:
+        orm_mode = True
+
+
+class HomeControlModeUpdate(BaseModel):
+    is_manual: bool
+
+# ---------- Получение состояний датчиков для arduino ----------
+class ToggleDeviceRequest(BaseModel):
+    room_id: int
+    sensor_id: int
+    type: str  # light | ventilation
+    is_on: bool
+
+
+class RoomDevicesResponse(BaseModel):
+    room_id: int
+    room_name: str
+    devices: Dict[int, Dict[str, bool]]

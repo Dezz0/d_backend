@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.database import init_db
-from app.routers import rooms, applications, auth, sensors, users, arduino_endpoint
+from app.routers import rooms, applications, auth, sensors, users, arduino_endpoint, home_control, outdoor_temperature
 
 app = FastAPI(
     title="Smart Home API",
@@ -29,6 +29,8 @@ app.include_router(rooms.router)
 app.include_router(applications.router)
 app.include_router(users.router)
 app.include_router(arduino_endpoint.router)
+app.include_router(home_control.router)
+app.include_router(outdoor_temperature.router)
 @app.get("/")
 def root():
     return {"message": "Smart Home API is running 🚀"}

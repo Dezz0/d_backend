@@ -2,7 +2,6 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app import models, schemas
 from app.database import get_db
-from datetime import datetime
 import logging
 
 from app.models import SENSOR_NAMES
@@ -10,17 +9,47 @@ from app.models import SENSOR_NAMES
 router = APIRouter(prefix="/arduino", tags=["Arduino Data"])
 logger = logging.getLogger(__name__)
 
-
+'''
+Универсальный эндпоинт для приема данных от Arduino.
+Принимает все данные от датчиков в комнате одним запросом.
+Пример:
+{
+  "room_id": 1,
+  "room_name": "Кухня",
+  "sensors": [
+    {
+      "sensor_id": 1,
+      "type": "temperature",
+      "value": 23.5
+    },
+    {
+      "sensor_id": 1,
+      "type": "humidity",
+      "humidity_level": 65.2
+    },
+    {
+      "sensor_id": 1,
+      "type": "light",
+      "is_on": true
+    },
+    {
+      "sensor_id": 2,
+      "type": "light",
+      "is_on": false
+    },
+    {
+      "sensor_id": 1,
+      "type": "gas",
+      "value": true
+    }
+  ]
+}
+'''
 @router.post("/send-data", response_model=schemas.ArduinoDataResponse)
 def receive_arduino_data(
         data: schemas.ArduinoDataCreate,
         db: Session = Depends(get_db)
 ):
-    """
-    Универсальный эндпоинт для приема данных от Arduino.
-    Принимает все данные от датчиков в комнате одним запросом.
-    """
-
     print('📥 Получены данные от Arduino:')
     print('=' * 50)
     print(data)
@@ -57,13 +86,8 @@ def receive_arduino_data(
 
         elif sensor_type == 'fan':  # Датчик вентиляции
             state = "ВКЛЮЧЕН" if sensor.get('is_on') else "ВЫКЛЮЧЕН"
-            speed = f", скорость: {sensor.get('fan_speed')}" if sensor.get('fan_speed') else ""
-            print(f"Вентиляция: {state}{speed}")
+            print(f"Вентиляция: {state}")
 
-        elif sensor_type == 'motion':  # Датчик движения
-            is_motion = sensor.get('is_on')
-            state = "ДВИЖЕНИЕ ОБНАРУЖЕНО" if is_motion else "НЕТ ДВИЖЕНИЯ"
-            print(f"{sensor_name}: {state}")
 
         else:
             # Для неизвестных типов собираем все не-None значения
@@ -76,8 +100,6 @@ def receive_arduino_data(
                         values.append(f"значение: {value}")
                     elif key == 'humidity_level':
                         values.append(f"влажность: {value}%")
-                    elif key == 'fan_speed':
-                        values.append(f"скорость: {value}")
                     elif key == 'trigger_time':
                         values.append(f"время: {value}")
                     else:
@@ -117,8 +139,6 @@ def receive_arduino_data(
                 process_humidity_sensor(db, room, sensor_data)
             elif sensor_data.type == "ventilation":
                 process_ventilation_sensor(db, room, sensor_data)
-            elif sensor_data.type == "motion":
-                process_motion_sensor(db, room, sensor_data)
             else:
                 errors.append(f"Unknown sensor type: {sensor_data.type}")
                 continue
@@ -189,21 +209,15 @@ def process_light_sensor(db: Session, room: models.Room, data: schemas.SensorDat
 
 
 def process_gas_sensor(db: Session, room: models.Room, data: schemas.SensorData):
-    """Обработка датчика газа"""
-    ppm = data.ppm if data.ppm is not None else data.value
+    value = data.value
 
-    if ppm is None:
-        raise ValueError("Gas PPM value is required")
-
-    # Определяем статус по PPM
-    if ppm <= 400:
-        status = "уличный воздух"
-    elif ppm <= 1000:
-        status = "рекомендованная концентрация"
-    elif ppm <= 1500:
-        status = "предельная концентрация"
+    # Определяем статус
+    if value is None:
+        status = "Данных нет"
+    elif value is True:
+        status = "Повышенное количество CO2"
     else:
-        status = "смертельная концентрация"
+        status = "Газ не обнаружен"
 
     sensor = db.query(models.GasSensor).filter(
         models.GasSensor.room_id == room.id,
@@ -211,13 +225,13 @@ def process_gas_sensor(db: Session, room: models.Room, data: schemas.SensorData)
     ).first()
 
     if sensor:
-        sensor.ppm = float(ppm)
+        sensor.value = value
         sensor.status = status
     else:
         sensor = models.GasSensor(
             sensor_id=data.sensor_id,
             room_id=room.id,
-            ppm=float(ppm),
+            value=value,
             status=status
         )
         db.add(sensor)
@@ -248,11 +262,7 @@ def process_humidity_sensor(db: Session, room: models.Room, data: schemas.Sensor
 
 def process_ventilation_sensor(db: Session, room: models.Room, data: schemas.SensorData):
     """Обработка датчика вентиляции"""
-    fan_speed = data.fan_speed if data.fan_speed is not None else data.value
     is_on = data.is_on
-
-    if fan_speed is None or is_on is None:
-        raise ValueError("Ventilation fan_speed and is_on are required")
 
     sensor = db.query(models.VentilationSensor).filter(
         models.VentilationSensor.room_id == room.id,
@@ -260,33 +270,12 @@ def process_ventilation_sensor(db: Session, room: models.Room, data: schemas.Sen
     ).first()
 
     if sensor:
-        sensor.fan_speed = float(fan_speed)
         sensor.is_on = bool(is_on)
     else:
         sensor = models.VentilationSensor(
             sensor_id=data.sensor_id,
             room_id=room.id,
-            fan_speed=float(fan_speed),
             is_on=bool(is_on)
         )
         db.add(sensor)
 
-
-def process_motion_sensor(db: Session, room: models.Room, data: schemas.SensorData):
-    """Обработка датчика движения"""
-    trigger_time = data.trigger_time or datetime.now()
-
-    sensor = db.query(models.MotionSensor).filter(
-        models.MotionSensor.room_id == room.id,
-        models.MotionSensor.sensor_id == data.sensor_id
-    ).first()
-
-    if sensor:
-        sensor.trigger_time = trigger_time
-    else:
-        sensor = models.MotionSensor(
-            sensor_id=data.sensor_id,
-            room_id=room.id,
-            trigger_time=trigger_time
-        )
-        db.add(sensor)

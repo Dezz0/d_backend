@@ -12,7 +12,6 @@ SENSOR_MODELS = {
     "gas": models.GasSensor,
     "humidity": models.HumiditySensor,
     "ventilation": models.VentilationSensor,
-    "motion": models.MotionSensor
 }
 
 # ---------- Все датчики в комнате ----------
@@ -35,7 +34,6 @@ def get_room_sensors(
         "gas_sensors": room.gas_sensors,
         "humidity_sensors": room.humidity_sensors,
         "ventilation_sensors": room.ventilation_sensors,
-        "motion_sensors": room.motion_sensors
     }
 
     return sensors_data
