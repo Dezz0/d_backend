@@ -105,12 +105,19 @@ class ApplicationBase(BaseModel):
     rooms: List[int]  # ID комнат из словаря
     sensors: Dict[int, List[int]]  # {room_id: [sensor_ids]}
 
-class ApplicationCreate(ApplicationBase):
-    pass
+"""Конфигурация одной комнаты с её датчиками"""
+class RoomConfig(BaseModel):
+    room_id: int
+    sensor_ids: List[int]
 
-class ApplicationResponse(ApplicationBase):
+class ApplicationCreate(BaseModel):
+    rooms_config: List[RoomConfig]  # Массив конфигураций комнат
+
+# Схема для ответа (можно оставить как есть или тоже обновить)
+class ApplicationResponse(BaseModel):
     id: int
     user_id: int
+    rooms_config: List[RoomConfig]  # Обновлено
     status: str
     rejection_comment: Optional[str] = None
     created_at: datetime
@@ -290,4 +297,4 @@ class ToggleDeviceRequest(BaseModel):
 class RoomDevicesResponse(BaseModel):
     room_id: int
     room_name: str
-    devices: Dict[int, Dict[str, bool]]
+    devices: Dict[str, Dict[str, Union[str, bool]]]

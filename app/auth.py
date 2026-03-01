@@ -12,8 +12,8 @@ import os
 SECRET_KEY = os.getenv("SECRET_KEY", "supersecret")
 REFRESH_SECRET_KEY = os.getenv("REFRESH_SECRET_KEY", "refresh_secret")
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 15  # Уменьшаем время жизни access токена
-REFRESH_TOKEN_EXPIRE_DAYS = 30
+ACCESS_TOKEN_EXPIRE_MINUTES = 1500  # Уменьшаем время жизни access токена
+REFRESH_TOKEN_EXPIRE_DAYS = 3000
 
 ph = PasswordHasher()
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")

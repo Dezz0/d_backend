@@ -57,8 +57,7 @@ class Application(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"))
-    rooms = Column(JSON, nullable=False)
-    sensors = Column(JSON, nullable=False)
+    rooms_config = Column(JSON, nullable=False)
     created_room_ids = Column(JSON, nullable=True)
     status = Column(String, default="pending")
     rejection_comment = Column(String, nullable=True)
@@ -73,7 +72,7 @@ class Room(Base):
     __tablename__ = "rooms"
 
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, nullable=False, unique=True)
+    name = Column(String, nullable=False)
 
     # связи с датчиками
     temperature_sensors = relationship("TemperatureSensor", back_populates="room")

@@ -3,7 +3,9 @@ from sqlalchemy.orm import Session
 from app import models, schemas
 from app.database import get_db
 from app.auth import get_current_user
-from app.utils.sensor_utils import create_room_from_application, create_sensor_from_application
+from app.utils.sensor_utils import (
+    process_application_rooms
+)
 
 router = APIRouter(prefix="/applications", tags=["Applications"])
 
@@ -19,44 +21,48 @@ def get_dictionaries():
 # ---------- Для пользователей ----------
 @router.post("/", response_model=schemas.ApplicationResponse)
 def create_application(
-    application_data: schemas.ApplicationCreate,
-    current_user: models.User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+        application_data: schemas.ApplicationCreate,
+        current_user: models.User = Depends(get_current_user),
+        db: Session = Depends(get_db)
 ):
     """Создать новую заявку"""
+    # Проверка прав
     if current_user.is_admin:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Admin cannot create applications"
         )
 
-    # Валидация комнат
-    for room_id in application_data.rooms:
-        if room_id not in models.ROOM_TYPES:
+    # Валидация всех комнат и датчиков
+    for room_config in application_data.rooms_config:
+        # Проверяем существование комнаты в словаре
+        if room_config.room_id not in models.ROOM_TYPES:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Invalid room ID: {room_id}"
+                detail=f"Invalid room ID: {room_config.room_id}"
             )
 
-    # Валидация датчиков
-    for room_id, sensor_ids in application_data.sensors.items():
-        if room_id not in application_data.rooms:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Room {room_id} not in selected rooms"
-            )
-        for sensor_id in sensor_ids:
+        # Проверяем все датчики в комнате
+        for sensor_id in room_config.sensor_ids:
             if sensor_id not in models.SENSOR_TYPES:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"Invalid sensor ID: {sensor_id}"
+                    detail=f"Invalid sensor ID: {sensor_id} in room {room_config.room_id}"
                 )
 
-    # Создаем заявку
+    # Дополнительная валидация: проверяем, что нет пустых комнат без датчиков
+    empty_rooms = [rc for rc in application_data.rooms_config if not rc.sensor_ids]
+    if empty_rooms:
+        room_ids = [rc.room_id for rc in empty_rooms]
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Rooms must have at least one sensor: {room_ids}"
+        )
+
+    # Создаем заявку с новой структурой
     application = models.Application(
         user_id=current_user.id,
-        rooms=application_data.rooms,
-        sensors=application_data.sensors,
+        rooms_config=[rc.dict() for rc in application_data.rooms_config],  # Конвертируем в dict для JSON
         status="pending"
     )
 
@@ -64,8 +70,15 @@ def create_application(
     db.commit()
     db.refresh(application)
 
+    # Формируем ответ
     return {
-        **application.__dict__,
+        "id": application.id,
+        "user_id": application.user_id,
+        "rooms_config": application.rooms_config,
+        "status": application.status,
+        "rejection_comment": application.rejection_comment,
+        "created_at": application.created_at,
+        "updated_at": application.updated_at,
         "user_login": current_user.login
     }
 
@@ -83,8 +96,7 @@ def get_my_applications(
         {
             "id": app.id,
             "user_id": app.user_id,
-            "rooms": app.rooms,
-            "sensors": app.sensors,
+            "rooms_config": app.rooms_config,
             "status": app.status,
             "rejection_comment": app.rejection_comment,
             "created_at": app.created_at,
@@ -115,8 +127,7 @@ def get_all_applications(
         {
             "id": app.id,
             "user_id": app.user_id,
-            "rooms": app.rooms,
-            "sensors": app.sensors,
+            "rooms_config": app.rooms_config,
             "status": app.status,
             "rejection_comment": app.rejection_comment,
             "created_at": app.created_at,
@@ -125,6 +136,7 @@ def get_all_applications(
         }
         for app in applications
     ]
+
 
 @router.get("/admin/pending", response_model=list[schemas.ApplicationResponse])
 def get_pending_applications(
@@ -179,8 +191,7 @@ def get_user_applications(
         {
             "id": app.id,
             "user_id": app.user_id,
-            "rooms": app.rooms,
-            "sensors": app.sensors,
+            "rooms_config": app.rooms_config,
             "status": app.status,
             "rejection_comment": app.rejection_comment,
             "created_at": app.created_at,
@@ -217,8 +228,7 @@ def get_application(
     return {
         "id": application.id,
         "user_id": application.user_id,
-        "rooms": application.rooms,
-        "sensors": application.sensors,
+        "rooms_config": application.rooms_config,
         "status": application.status,
         "rejection_comment": application.rejection_comment,
         "created_at": application.created_at,
@@ -229,10 +239,10 @@ def get_application(
 
 @router.put("/{application_id}")
 def update_application_status(
-    application_id: int,
-    status_data: schemas.ApplicationUpdate,
-    current_user: models.User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+        application_id: int,
+        status_data: schemas.ApplicationUpdate,
+        current_user: models.User = Depends(get_current_user),
+        db: Session = Depends(get_db)
 ):
     """Обновить статус заявки (только для админа)"""
     if not current_user.is_admin:
@@ -267,49 +277,10 @@ def update_application_status(
             user = db.query(models.User).filter(models.User.id == application.user_id).first()
             user.application_submitted = True
 
-            created_room_ids = []
+            # Используем новую утилиту для обработки всех комнат
+            created_room_ids = process_application_rooms(db, application.rooms_config)
 
-            for room_id in application.rooms:
-                try:
-                    # создаем комнату
-                    room = create_room_from_application(db, room_id)
-                    created_room_ids.append(room.id)
-
-                    # получаем датчики
-                    sensor_ids = []
-                    if isinstance(application.sensors, dict):
-                        room_key = str(room_id)
-                        if room_key in application.sensors:
-                            sensor_ids = application.sensors[room_key]
-                        elif room_id in application.sensors:
-                            sensor_ids = application.sensors[room_id]
-
-                    # создаем датчики
-                    for idx, sensor_type_id in enumerate(sensor_ids, start=1):
-                        sensor_type_name = models.SENSOR_TYPES.get(sensor_type_id)
-                        if not sensor_type_name:
-                            continue
-
-                        sensor_type_map = {
-                            "Датчик температуры": "temperature",
-                            "Датчик освещения": "light",
-                            "Датчик газа": "gas",
-                            "Датчик влажности": "humidity",
-                            "Датчик вентиляции": "ventilation",
-                        }
-
-                        sensor_type_key = sensor_type_map.get(sensor_type_name)
-                        if sensor_type_key:
-                            try:
-                                create_sensor_from_application(db, sensor_type_key, idx, room.id)
-                            except Exception as e:
-                                print(f"Error creating sensor {sensor_type_key} in room {room.id}: {e}")
-                                continue
-
-                except Exception as e:
-                    print(f"Error creating room {room_id}: {e}")
-                    continue
-
+            # Сохраняем ID созданных комнат в заявке
             application.created_room_ids = created_room_ids
 
         db.commit()

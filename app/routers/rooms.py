@@ -187,11 +187,13 @@ def get_user_rooms(
     return rooms_data
 
 """Получить комнаты и датчики пользователя для arduino"""
+
+
 @router.get("/{room_id}/devices", response_model=schemas.RoomDevicesResponse)
 def get_room_devices(
-    room_id: int,
-    db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_user)
+        room_id: int,
+        db: Session = Depends(get_db),
+        current_user: models.User = Depends(get_current_user)
 ):
     room = db.query(models.Room).filter(models.Room.id == room_id).first()
 
@@ -201,19 +203,24 @@ def get_room_devices(
     devices = {}
 
     for light in room.light_sensors:
-        devices[light.sensor_id] = {
+        devices[str(light.sensor_id)] = {
             "type": "light",
             "is_on": light.is_on
         }
 
     for fan in room.ventilation_sensors:
-        devices[fan.sensor_id] = {
+        devices[str(fan.sensor_id)] = {
             "type": "ventilation",
             "is_on": fan.is_on
         }
 
-    return {
+    response = {
         "room_id": room.id,
         "room_name": room.name,
         "devices": devices
     }
+
+    # Для отладки
+    print("Response data:", response)
+
+    return response
