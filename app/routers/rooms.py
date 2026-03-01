@@ -106,19 +106,8 @@ def get_user_rooms(
 
     rooms_data = []
 
-    # Используем ID созданных комнат из заявки
-    # Если created_room_ids нет, используем старый метод (для обратной совместимости)
-    if approved_application.created_room_ids:
-        room_ids = approved_application.created_room_ids
-    else:
-        # Для старых заявок создаем комнаты на лету
-        room_ids = []
-        for room_type_id in approved_application.rooms:
-            room = db.query(models.Room).filter(
-                models.Room.name == models.ROOM_TYPES.get(room_type_id, "")
-            ).first()
-            if room:
-                room_ids.append(room.id)
+    # Берем ID созданных комнат из заявки
+    room_ids = approved_application.created_room_ids or []
 
     for room_id in room_ids:
         room = db.query(models.Room).filter(models.Room.id == room_id).first()
@@ -130,7 +119,7 @@ def get_user_rooms(
         # Температурные датчики
         for idx, sensor in enumerate(room.temperature_sensors, start=1):
             sensors.append(schemas.SensorInfo(
-                id=sensor.sensor_id,  # Это теперь число
+                id=sensor.id,
                 type="temperature",
                 name=f"Датчик температуры {idx}",
                 room_id=room.id,
@@ -140,7 +129,7 @@ def get_user_rooms(
         # Датчики освещения
         for idx, sensor in enumerate(room.light_sensors, start=1):
             sensors.append(schemas.SensorInfo(
-                id=sensor.sensor_id,
+                id=sensor.id,
                 type="light",
                 name=f"Датчик освещения {idx}",
                 room_id=room.id,
@@ -150,7 +139,7 @@ def get_user_rooms(
         # Датчики газа
         for idx, sensor in enumerate(room.gas_sensors, start=1):
             sensors.append(schemas.SensorInfo(
-                id=sensor.sensor_id,
+                id=sensor.id,
                 type="gas",
                 name=f"Датчик газа {idx}",
                 room_id=room.id,
@@ -160,7 +149,7 @@ def get_user_rooms(
         # Датчики влажности
         for idx, sensor in enumerate(room.humidity_sensors, start=1):
             sensors.append(schemas.SensorInfo(
-                id=sensor.sensor_id,
+                id=sensor.id,
                 type="humidity",
                 name=f"Датчик влажности {idx}",
                 room_id=room.id,
@@ -170,13 +159,12 @@ def get_user_rooms(
         # Датчики вентиляции
         for idx, sensor in enumerate(room.ventilation_sensors, start=1):
             sensors.append(schemas.SensorInfo(
-                id=sensor.sensor_id,
+                id=sensor.id,
                 type="ventilation",
                 name=f"Датчик вентиляции {idx}",
                 room_id=room.id,
                 room_name=room.name
             ))
-
 
         rooms_data.append(schemas.UserRoomsResponse(
             id=room.id,

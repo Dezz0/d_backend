@@ -15,7 +15,6 @@ logger = logging.getLogger(__name__)
 Пример:
 {
   "room_id": 1,
-  "room_name": "Кухня",
   "sensors": [
     {
       "sensor_id": 1,
@@ -113,14 +112,13 @@ def receive_arduino_data(
     print('=' * 50)
     # Проверяем, что комната существует
     room = db.query(models.Room).filter(
-        models.Room.id == data.room_id,
-        models.Room.name == data.room_name
+        models.Room.id == data.room_id
     ).first()
 
     if not room:
         raise HTTPException(
             status_code=404,
-            detail=f"Room with id={data.room_id} and name='{data.room_name}' not found"
+            detail=f"Room with id={data.room_id} not found"
         )
 
     processed_count = 0
@@ -165,53 +163,40 @@ def receive_arduino_data(
 
 # Функции обработки для каждого типа датчика
 def process_temperature_sensor(db: Session, room: models.Room, data: schemas.SensorData):
-    """Обработка датчика температуры"""
     if data.value is None:
         raise ValueError("Temperature value is required")
 
     sensor = db.query(models.TemperatureSensor).filter(
-        models.TemperatureSensor.room_id == room.id,
-        models.TemperatureSensor.sensor_id == data.sensor_id
+        models.TemperatureSensor.id == data.sensor_db_id,
+        models.TemperatureSensor.room_id == room.id
     ).first()
 
-    if sensor:
-        sensor.value = data.value
-    else:
-        sensor = models.TemperatureSensor(
-            sensor_id=data.sensor_id,
-            room_id=room.id,
-            value=data.value
-        )
-        db.add(sensor)
+    if not sensor:
+        raise ValueError("Temperature sensor not found in this room")
+
+    sensor.value = data.value
 
 
 def process_light_sensor(db: Session, room: models.Room, data: schemas.SensorData):
-    """Обработка датчика освещения"""
     is_on = data.is_on if data.is_on is not None else data.value
 
     if is_on is None:
-        raise ValueError("Light state (is_on or value) is required")
+        raise ValueError("Light state is required")
 
     sensor = db.query(models.LightSensor).filter(
-        models.LightSensor.room_id == room.id,
-        models.LightSensor.sensor_id == data.sensor_id
+        models.LightSensor.id == data.sensor_db_id,
+        models.LightSensor.room_id == room.id
     ).first()
 
-    if sensor:
-        sensor.is_on = bool(is_on)
-    else:
-        sensor = models.LightSensor(
-            sensor_id=data.sensor_id,
-            room_id=room.id,
-            is_on=bool(is_on)
-        )
-        db.add(sensor)
+    if not sensor:
+        raise ValueError("Light sensor not found in this room")
+
+    sensor.is_on = bool(is_on)
 
 
 def process_gas_sensor(db: Session, room: models.Room, data: schemas.SensorData):
     value = data.value
 
-    # Определяем статус
     if value is None:
         status = "Данных нет"
     elif value is True:
@@ -220,62 +205,45 @@ def process_gas_sensor(db: Session, room: models.Room, data: schemas.SensorData)
         status = "Газ не обнаружен"
 
     sensor = db.query(models.GasSensor).filter(
-        models.GasSensor.room_id == room.id,
-        models.GasSensor.sensor_id == data.sensor_id
+        models.GasSensor.id == data.sensor_db_id,
+        models.GasSensor.room_id == room.id
     ).first()
 
-    if sensor:
-        sensor.value = value
-        sensor.status = status
-    else:
-        sensor = models.GasSensor(
-            sensor_id=data.sensor_id,
-            room_id=room.id,
-            value=value,
-            status=status
-        )
-        db.add(sensor)
+    if not sensor:
+        raise ValueError("Gas sensor not found in this room")
+
+    sensor.value = value
+    sensor.status = status
 
 
 def process_humidity_sensor(db: Session, room: models.Room, data: schemas.SensorData):
-    """Обработка датчика влажности"""
     humidity = data.humidity_level if data.humidity_level is not None else data.value
 
     if humidity is None:
         raise ValueError("Humidity value is required")
 
     sensor = db.query(models.HumiditySensor).filter(
-        models.HumiditySensor.room_id == room.id,
-        models.HumiditySensor.sensor_id == data.sensor_id
+        models.HumiditySensor.id == data.sensor_db_id,
+        models.HumiditySensor.room_id == room.id
     ).first()
 
-    if sensor:
-        sensor.humidity_level = float(humidity)
-    else:
-        sensor = models.HumiditySensor(
-            sensor_id=data.sensor_id,
-            room_id=room.id,
-            humidity_level=float(humidity)
-        )
-        db.add(sensor)
+    if not sensor:
+        raise ValueError("Humidity sensor not found in this room")
+
+    sensor.humidity_level = float(humidity)
 
 
 def process_ventilation_sensor(db: Session, room: models.Room, data: schemas.SensorData):
-    """Обработка датчика вентиляции"""
-    is_on = data.is_on
+    if data.is_on is None:
+        raise ValueError("Ventilation state is required")
 
     sensor = db.query(models.VentilationSensor).filter(
-        models.VentilationSensor.room_id == room.id,
-        models.VentilationSensor.sensor_id == data.sensor_id
+        models.VentilationSensor.id == data.sensor_db_id,
+        models.VentilationSensor.room_id == room.id
     ).first()
 
-    if sensor:
-        sensor.is_on = bool(is_on)
-    else:
-        sensor = models.VentilationSensor(
-            sensor_id=data.sensor_id,
-            room_id=room.id,
-            is_on=bool(is_on)
-        )
-        db.add(sensor)
+    if not sensor:
+        raise ValueError("Ventilation sensor not found in this room")
+
+    sensor.is_on = bool(data.is_on)
 

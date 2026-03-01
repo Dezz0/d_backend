@@ -25,6 +25,12 @@ def create_application(
         current_user: models.User = Depends(get_current_user),
         db: Session = Depends(get_db)
 ):
+    print('─' * 50)
+    print('СОЗДАНИЕ ЗАЯВКИ')
+    print('─' * 50)
+    print(application_data.rooms_config)
+    print('─' * 50)
+
     """Создать новую заявку"""
     # Проверка прав
     if current_user.is_admin:
@@ -35,11 +41,11 @@ def create_application(
 
     # Валидация всех комнат и датчиков
     for room_config in application_data.rooms_config:
-        # Проверяем существование комнаты в словаре
-        if room_config.room_id not in models.ROOM_TYPES:
+        # Проверяем существование комнаты в словаре по типу
+        if room_config.room_type not in models.ROOM_TYPES.values():
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Invalid room ID: {room_config.room_id}"
+                detail=f"Invalid room type: {room_config.room_type}"
             )
 
         # Проверяем все датчики в комнате
@@ -47,16 +53,16 @@ def create_application(
             if sensor_id not in models.SENSOR_TYPES:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"Invalid sensor ID: {sensor_id} in room {room_config.room_id}"
+                    detail=f"Invalid sensor ID: {sensor_id} in room {room_config.room_type}"
                 )
 
     # Дополнительная валидация: проверяем, что нет пустых комнат без датчиков
     empty_rooms = [rc for rc in application_data.rooms_config if not rc.sensor_ids]
     if empty_rooms:
-        room_ids = [rc.room_id for rc in empty_rooms]
+        room_types = [rc.room_type for rc in empty_rooms]
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Rooms must have at least one sensor: {room_ids}"
+            detail=f"Rooms must have at least one sensor: {room_types}"
         )
 
     # Создаем заявку с новой структурой
@@ -274,24 +280,40 @@ def update_application_status(
 
         if status_data.status == "approved":
             # ОДОБРЕНИЕ: application_submitted = true
-            user = db.query(models.User).filter(models.User.id == application.user_id).first()
+            user = db.query(models.User).filter(
+                models.User.id == application.user_id
+            ).first()
+
+            if not user:
+                raise Exception("User not found")
+
             user.application_submitted = True
 
+            if not application.rooms_config:
+                raise Exception("Application has no rooms_config")
             # Используем новую утилиту для обработки всех комнат
-            created_room_ids = process_application_rooms(db, application.rooms_config)
+            created_room_ids = process_application_rooms(
+                db=db,
+                user_id=application.user_id,
+                rooms_config=application.rooms_config
+            )
 
-            # Сохраняем ID созданных комнат в заявке
             application.created_room_ids = created_room_ids
 
         db.commit()
         db.refresh(application)
 
+    # except Exception as e:
+    #     db.rollback()
+    #     raise HTTPException(
+    #         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+    #         detail=f"Error updating application: {str(e)}"
+    #     )
+
     except Exception as e:
         db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error updating application: {str(e)}"
-        )
+        print("ERROR:", repr(e))
+        raise
 
     return {
         "message": f"Application {status_data.status} successfully",

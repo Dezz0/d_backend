@@ -107,11 +107,11 @@ class ApplicationBase(BaseModel):
 
 """Конфигурация одной комнаты с её датчиками"""
 class RoomConfig(BaseModel):
-    room_id: int
+    room_type: str
     sensor_ids: List[int]
 
 class ApplicationCreate(BaseModel):
-    rooms_config: List[RoomConfig]  # Массив конфигураций комнат
+    rooms_config: List[RoomConfig]
 
 # Схема для ответа (можно оставить как есть или тоже обновить)
 class ApplicationResponse(BaseModel):
@@ -148,8 +148,8 @@ class RoomResponse(RoomBase):
         orm_mode = True
 
 class SensorInfo(BaseModel):
-    id: int  # Изменено с str на int
-    type: str # temperature, light, gas, humidity, ventilation
+    id: int  # теперь это реальный PK датчика
+    type: str
     name: str
     room_id: int
     room_name: str
@@ -233,18 +233,17 @@ class VentilationSensorResponse(BaseModel):
 
 # ---------- Схемы для универсального эндпоинта ----------
 class SensorData(BaseModel):
-    """Данные от одного датчика"""
-    sensor_id: int  # Уникальный ID датчика в комнате
-    type: str  # temperature, light, gas, humidity, ventilation
-    value: Optional[Union[float, bool, str, int]] = None
+    sensor_db_id: int  # глобальный ID датчика
+
+    type: str
+
+    value: Optional[Union[float, bool]] = None
     is_on: Optional[bool] = None
     humidity_level: Optional[float] = None
-    trigger_time: Optional[datetime] = None
 
 class ArduinoDataCreate(BaseModel):
     """Данные от Arduino для всех датчиков в комнате"""
     room_id: int  # Уникальный ID комнаты
-    room_name: str  # Название комнаты для проверки
     sensors: List[SensorData]  # Все датчики в комнате
 
 class ArduinoDataResponse(BaseModel):
@@ -273,6 +272,21 @@ class OutdoorTemperatureResponse(BaseModel):
 
     class Config:
         orm_mode = True
+
+# ---------- Свет вне дома ----------
+class OutdoorLightData(BaseModel):
+    side: str  # "front" или "back"
+    is_on: bool
+
+class OutdoorLightCreate(BaseModel):
+    lights: List[OutdoorLightData]
+
+class OutdoorLightResponse(BaseModel):
+    lights: List[OutdoorLightData]
+    created_at: datetime
+
+class ToggleOutdoorLightRequest(OutdoorLightData):
+    pass
 
 # ---------- Схемы для управления домом через приложение ----------
 class HomeControlModeResponse(BaseModel):

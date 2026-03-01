@@ -72,84 +72,99 @@ class Room(Base):
     __tablename__ = "rooms"
 
     id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+
     name = Column(String, nullable=False)
+    room_type = Column(String, nullable=False)
 
-    # связи с датчиками
-    temperature_sensors = relationship("TemperatureSensor", back_populates="room")
-    light_sensors = relationship("LightSensor", back_populates="room")
-    gas_sensors = relationship("GasSensor", back_populates="room")
-    humidity_sensors = relationship("HumiditySensor", back_populates="room")
-    ventilation_sensors = relationship("VentilationSensor", back_populates="room")
+    created_at = Column(DateTime, default=datetime.utcnow)
 
-    def get_total_sensors(self):
-        return (
-                len(self.temperature_sensors) +
-                len(self.light_sensors) +
-                len(self.gas_sensors) +
-                len(self.humidity_sensors) +
-                len(self.ventilation_sensors)
-        )
+    user = relationship("User")
+
+    temperature_sensors = relationship(
+        "TemperatureSensor",
+        back_populates="room",
+        cascade="all, delete-orphan"
+    )
+    light_sensors = relationship(
+        "LightSensor",
+        back_populates="room",
+        cascade="all, delete-orphan"
+    )
+    gas_sensors = relationship(
+        "GasSensor",
+        back_populates="room",
+        cascade="all, delete-orphan"
+    )
+    humidity_sensors = relationship(
+        "HumiditySensor",
+        back_populates="room",
+        cascade="all, delete-orphan"
+    )
+    ventilation_sensors = relationship(
+        "VentilationSensor",
+        back_populates="room",
+        cascade="all, delete-orphan"
+    )
 
 # ---------- Датчики ----------
 class TemperatureSensor(Base):
     __tablename__ = "temperature_sensors"
 
     id = Column(Integer, primary_key=True, index=True)
-    sensor_id = Column(Integer, nullable=False)  # Изменено с String на Integer
-    room_id = Column(Integer, ForeignKey("rooms.id"))
-    value = Column(Float, nullable=False)
+    room_id = Column(Integer, ForeignKey("rooms.id"), nullable=False)
+
+    value = Column(Float, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
 
     room = relationship("Room", back_populates="temperature_sensors")
-
-    # Добавить уникальность комбинации room_id + sensor_id
-    __table_args__ = (UniqueConstraint('room_id', 'sensor_id', name='uq_room_temp_sensor'),)
 
 
 class LightSensor(Base):
     __tablename__ = "light_sensors"
-    __table_args__ = (UniqueConstraint('room_id', 'sensor_id', name='uq_room_light_sensor'),)
 
     id = Column(Integer, primary_key=True, index=True)
-    sensor_id = Column(Integer, nullable=False)
-    room_id = Column(Integer, ForeignKey("rooms.id"))
-    is_on = Column(Boolean, nullable=False)
+    room_id = Column(Integer, ForeignKey("rooms.id"), nullable=False)
+
+    is_on = Column(Boolean, default=False, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
 
     room = relationship("Room", back_populates="light_sensors")
 
 
 class GasSensor(Base):
     __tablename__ = "gas_sensors"
-    __table_args__ = (UniqueConstraint('room_id', 'sensor_id', name='uq_room_gas_sensor'),)
 
     id = Column(Integer, primary_key=True, index=True)
-    sensor_id = Column(Integer, nullable=False)
     room_id = Column(Integer, ForeignKey("rooms.id"), nullable=False)
+
     value = Column(Boolean, nullable=True)
-    status = Column(String, nullable=False, default="данных нет")
+    status = Column(String, default="данных нет")
+    created_at = Column(DateTime, default=datetime.utcnow)
 
     room = relationship("Room", back_populates="gas_sensors")
 
 
 class HumiditySensor(Base):
     __tablename__ = "humidity_sensors"
-    __table_args__ = (UniqueConstraint('room_id', 'sensor_id', name='uq_room_humidity_sensor'),)
 
     id = Column(Integer, primary_key=True, index=True)
-    sensor_id = Column(Integer, nullable=False)
-    room_id = Column(Integer, ForeignKey("rooms.id"))
-    humidity_level = Column(Float, nullable=False)
+    room_id = Column(Integer, ForeignKey("rooms.id"), nullable=False)
+
+    humidity_level = Column(Float, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
 
     room = relationship("Room", back_populates="humidity_sensors")
 
 
 class VentilationSensor(Base):
     __tablename__ = "ventilation_sensors"
-    __table_args__ = (UniqueConstraint('room_id', 'sensor_id', name='uq_room_ventilation_sensor'),)
 
     id = Column(Integer, primary_key=True, index=True)
-    sensor_id = Column(Integer, nullable=False)
-    room_id = Column(Integer, ForeignKey("rooms.id"))
-    is_on = Column(Boolean, nullable=False)
+    room_id = Column(Integer, ForeignKey("rooms.id"), nullable=False)
+
+    is_on = Column(Boolean, default=False, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
 
     room = relationship("Room", back_populates="ventilation_sensors")
 
@@ -185,3 +200,19 @@ class OutdoorTemperature(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
     user = relationship("User")
+
+
+class OutdoorLight(Base):
+    __tablename__ = "outdoor_light"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+
+    # Храним состояния двух датчиков в JSON: [{"side": "front", "is_on": True}, {"side": "back", "is_on": False}]
+    lights = Column(JSON, nullable=False)
+
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    # Связь с пользователем
+    user = relationship("User", back_populates="outdoor_lights")
+

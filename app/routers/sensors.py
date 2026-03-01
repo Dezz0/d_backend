@@ -42,7 +42,7 @@ def get_room_sensors(
 @router.get("/{sensor_type}/{sensor_id}")
 def get_sensor_info(
     sensor_type: str,
-    sensor_id: str,
+    sensor_id: int,  # сразу преобразуем к int
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
@@ -53,7 +53,9 @@ def get_sensor_info(
         )
 
     sensor_model = SENSOR_MODELS[sensor_type]
-    sensor = db.query(sensor_model).filter_by(sensor_id=sensor_id).first()
+
+    # Ищем по id
+    sensor = db.query(sensor_model).filter(sensor_model.id == sensor_id).first()
 
     if not sensor:
         raise HTTPException(status_code=404, detail="Sensor not found")
