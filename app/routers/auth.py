@@ -171,8 +171,8 @@ def get_user_profile(
     total_sensors = 0
 
     if approved_application:
-        total_rooms = len(approved_application.rooms)
-        total_sensors = sum(len(sensors) for sensors in approved_application.sensors.values())
+        total_rooms = len(approved_application.rooms_config)
+        total_sensors = sum(len(rc.get("sensor_ids", [])) for rc in approved_application.rooms_config)
 
     # Получаем pending заявки для has_pending_application
     has_pending = db.query(models.Application).filter(
@@ -198,7 +198,6 @@ def get_user_profile(
         "total_rooms": total_rooms,
         "total_sensors": total_sensors
     }
-
 
 @router.put("/profile", response_model=schemas.UserProfileResponse)
 def update_user_profile(

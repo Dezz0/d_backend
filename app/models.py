@@ -1,4 +1,5 @@
 from sqlalchemy import Column, Integer, String, Boolean, Float, ForeignKey, DateTime, JSON, UniqueConstraint
+from sqlalchemy.ext.mutable import MutableList
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declarative_base
 from datetime import datetime
@@ -209,10 +210,14 @@ class OutdoorLight(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
 
     # Храним состояния двух датчиков в JSON: [{"side": "front", "is_on": True}, {"side": "back", "is_on": False}]
-    lights = Column(JSON, nullable=False)
+    lights = Column(
+        MutableList.as_mutable(JSON),
+        nullable=False,
+        default=list
+    )
 
     created_at = Column(DateTime, default=datetime.utcnow)
 
     # Связь с пользователем
-    user = relationship("User", back_populates="outdoor_lights")
+    user = relationship("User")
 

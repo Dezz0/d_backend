@@ -76,8 +76,8 @@ def get_rooms_stats(
     total_sensors = 0
 
     if approved_application:
-        total_rooms = len(approved_application.rooms)
-        total_sensors = sum(len(sensors) for sensors in approved_application.sensors.values())
+        total_rooms = len(approved_application.rooms_config)
+        total_sensors = sum(len(rc.get("sensor_ids", [])) for rc in approved_application.rooms_config)
 
     return {
         "total_rooms": total_rooms,

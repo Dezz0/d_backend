@@ -19,7 +19,7 @@ class UserResponse(UserBase):
     has_pending_application: bool
 
     class Config:
-        orm_mode = True
+        from_attributes: True
 
 class UserProfileResponse(UserBase):
     id: int
@@ -38,7 +38,7 @@ class UserProfileResponse(UserBase):
     total_sensors: int = 0
 
     class Config:
-        orm_mode = True
+        from_attributes: True
 
 class ProfileStatsResponse(BaseModel):
     total_applications: int
@@ -98,7 +98,7 @@ class UserListResponse(BaseModel):
     created_at: Optional[datetime] = None
 
     class Config:
-        orm_mode = True
+        from_attributes: True
 
 # ---------- Заявки ----------
 class ApplicationBase(BaseModel):
@@ -125,7 +125,7 @@ class ApplicationResponse(BaseModel):
     user_login: str
 
     class Config:
-        orm_mode = True
+        from_attributes: True
 
 class ApplicationUpdate(BaseModel):
     status: str  # approved, rejected
@@ -145,7 +145,7 @@ class RoomResponse(RoomBase):
     id: int
 
     class Config:
-        orm_mode = True
+        from_attributes: True
 
 class SensorInfo(BaseModel):
     id: int  # теперь это реальный PK датчика
@@ -172,7 +172,7 @@ class TemperatureSensorResponse(BaseModel):
     value: float
 
     class Config:
-        orm_mode = True
+        from_attributes: True
 
 # ---------- Свет ----------
 class LightSensorCreate(BaseModel):
@@ -186,7 +186,7 @@ class LightSensorResponse(BaseModel):
     is_on: bool
 
     class Config:
-        orm_mode = True
+        from_attributes: True
 
 # ---------- Угарный газ ----------
 class GasSensorCreate(BaseModel):
@@ -201,7 +201,7 @@ class GasSensorResponse(BaseModel):
     status: str
 
     class Config:
-        orm_mode = True
+        from_attributes: True
 
 # ---------- Влажность ----------
 class HumiditySensorCreate(BaseModel):
@@ -215,7 +215,7 @@ class HumiditySensorResponse(BaseModel):
     humidity_level: float
 
     class Config:
-        orm_mode = True
+        from_attributes: True
 
 # ---------- Вентиляция ----------
 class VentilationSensorCreate(BaseModel):
@@ -229,7 +229,7 @@ class VentilationSensorResponse(BaseModel):
     is_on: bool
 
     class Config:
-        orm_mode = True
+        from_attributes: True
 
 # ---------- Схемы для универсального эндпоинта ----------
 class SensorData(BaseModel):
@@ -271,7 +271,7 @@ class OutdoorTemperatureResponse(BaseModel):
     created_at: datetime
 
     class Config:
-        orm_mode = True
+        from_attributes: True
 
 # ---------- Свет вне дома ----------
 class OutdoorLightData(BaseModel):
@@ -294,7 +294,7 @@ class HomeControlModeResponse(BaseModel):
     updated_at: datetime
 
     class Config:
-        orm_mode = True
+        from_attributes: True
 
 
 class HomeControlModeUpdate(BaseModel):
