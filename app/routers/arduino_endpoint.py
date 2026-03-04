@@ -17,27 +17,27 @@ logger = logging.getLogger(__name__)
   "room_id": 1,
   "sensors": [
     {
-      "sensor_id": 1,
+      "sensor_db_id": 1,
       "type": "temperature",
       "value": 23.5
     },
     {
-      "sensor_id": 1,
+      "sensor_db_id": 1,
       "type": "humidity",
       "humidity_level": 65.2
     },
     {
-      "sensor_id": 1,
+      "sensor_db_id": 1,
       "type": "light",
       "is_on": true
     },
     {
-      "sensor_id": 2,
+      "sensor_db_id": 2,
       "type": "light",
       "is_on": false
     },
     {
-      "sensor_id": 1,
+      "sensor_db_id": 1,
       "type": "gas",
       "value": true
     }
@@ -56,7 +56,7 @@ def receive_arduino_data(
 
     data_dict = data.model_dump()
 
-    print(f"📍 Комната: {data_dict.get('room_name')} [ID: {data_dict.get('room_id')}]")
+    print(f"📍 Комната [ID: {data_dict.get('room_id')}]")
     print('─' * 50)
 
     for sensor in data_dict.get('sensors', []):
@@ -92,7 +92,7 @@ def receive_arduino_data(
             # Для неизвестных типов собираем все не-None значения
             values = []
             for key, value in sensor.items():
-                if key not in ['sensor_id', 'type'] and value is not None:
+                if key not in ['sensor_db_id', 'type'] and value is not None:
                     if key == 'is_on':
                         values.append(f"состояние: {'вкл' if value else 'выкл'}")
                     elif key == 'value':
@@ -142,10 +142,10 @@ def receive_arduino_data(
                 continue
 
             processed_count += 1
-            logger.info(f"Processed {sensor_data.type} sensor {sensor_data.sensor_id} in room {room.name}")
+            logger.info(f"Processed {sensor_data.type} sensor {sensor_data.sensor_db_id} in room {room.name}")
 
         except Exception as e:
-            error_msg = f"Error processing sensor {sensor_data.sensor_id} ({sensor_data.type}): {str(e)}"
+            error_msg = f"Error processing sensor {sensor_data.sensor_db_id} ({sensor_data.type}): {str(e)}"
             errors.append(error_msg)
             logger.error(error_msg)
 
@@ -217,7 +217,7 @@ def process_gas_sensor(db: Session, room: models.Room, data: schemas.SensorData)
 
 
 def process_humidity_sensor(db: Session, room: models.Room, data: schemas.SensorData):
-    humidity = data.humidity_level if data.humidity_level is not None else data.value
+    humidity = data.humidity_level
 
     if humidity is None:
         raise ValueError("Humidity value is required")

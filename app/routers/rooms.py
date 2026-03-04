@@ -190,14 +190,16 @@ def get_room_devices(
 
     devices = {}
 
+    # Датчики света
     for light in room.light_sensors:
-        devices[str(light.sensor_id)] = {
+        devices[str(light.id)] = {
             "type": "light",
             "is_on": light.is_on
         }
 
+    # Датчики вентиляции
     for fan in room.ventilation_sensors:
-        devices[str(fan.sensor_id)] = {
+        devices[str(fan.id)] = {
             "type": "ventilation",
             "is_on": fan.is_on
         }
@@ -207,8 +209,5 @@ def get_room_devices(
         "room_name": room.name,
         "devices": devices
     }
-
-    # Для отладки
-    print("Response data:", response)
 
     return response

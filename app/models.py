@@ -209,15 +209,9 @@ class OutdoorLight(Base):
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
 
-    # Храним состояния двух датчиков в JSON: [{"side": "front", "is_on": True}, {"side": "back", "is_on": False}]
-    lights = Column(
-        MutableList.as_mutable(JSON),
-        nullable=False,
-        default=list
-    )
+    is_on = Column(Boolean, default=False, nullable=False)
 
     created_at = Column(DateTime, default=datetime.utcnow)
 
-    # Связь с пользователем
     user = relationship("User")
 

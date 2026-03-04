@@ -14,19 +14,21 @@ def receive_outdoor_light(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
-    if len(data.lights) != 2:
-        raise HTTPException(status_code=400, detail="Exactly 2 light sensors required (front and back)")
+    print("Получены данные по освещению снаружи дома:", data)
 
     record = models.OutdoorLight(
         user_id=current_user.id,
-        lights=[item.model_dump() for item in data.lights]
+        is_on=data.is_on
     )
 
     db.add(record)
     db.commit()
     db.refresh(record)
 
-    return record
+    return schemas.OutdoorLightResponse(
+        is_on=record.is_on,
+        created_at=record.created_at
+    )
 
 @router.get("/latest", response_model=schemas.OutdoorLightResponse)
 def get_latest_outdoor_light(
@@ -42,10 +44,7 @@ def get_latest_outdoor_light(
 
     if not record:
         return schemas.OutdoorLightResponse(
-            lights=[
-                {"side": "front", "is_on": False},
-                {"side": "back", "is_on": False}
-            ],
+            is_on=False,
             created_at=datetime.utcnow(),
         )
 

@@ -274,18 +274,19 @@ class OutdoorTemperatureResponse(BaseModel):
         from_attributes: True
 
 # ---------- Свет вне дома ----------
-class OutdoorLightData(BaseModel):
-    side: str  # "front" или "back"
+class OutdoorLightCreate(BaseModel):
     is_on: bool
 
-class OutdoorLightCreate(BaseModel):
-    lights: List[OutdoorLightData]
 
 class OutdoorLightResponse(BaseModel):
-    lights: List[OutdoorLightData]
+    is_on: bool
     created_at: datetime
 
-class ToggleOutdoorLightRequest(OutdoorLightData):
+
+class ToggleOutdoorLightRequest(BaseModel):
+    is_on: bool
+
+class ToggleOutdoorLightRequest(OutdoorLightCreate):
     pass
 
 # ---------- Схемы для управления домом через приложение ----------

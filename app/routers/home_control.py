@@ -93,12 +93,6 @@ def toggle_outdoor_light(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
-    if data.side not in ["front", "back"]:
-        raise HTTPException(
-            status_code=400,
-            detail="Invalid side. Must be 'front' or 'back'"
-        )
-
     record = (
         db.query(models.OutdoorLight)
         .filter(models.OutdoorLight.user_id == current_user.id)
@@ -109,31 +103,16 @@ def toggle_outdoor_light(
     if not record:
         record = models.OutdoorLight(
             user_id=current_user.id,
-            lights=[
-                {"side": "front", "is_on": False},
-                {"side": "back", "is_on": False}
-            ]
+            is_on=data.is_on
         )
         db.add(record)
-        db.commit()
-        db.refresh(record)
-
-    # 🔥 ВАЖНО: создаём новый список
-    new_lights = [
-        {
-            "side": light["side"],
-            "is_on": data.is_on if light["side"] == data.side else light["is_on"]
-        }
-        for light in record.lights
-    ]
-
-    record.lights = new_lights
+    else:
+        record.is_on = data.is_on
 
     db.commit()
     db.refresh(record)
 
     return {
         "success": True,
-        "side": data.side,
-        "is_on": data.is_on
+        "is_on": record.is_on
     }

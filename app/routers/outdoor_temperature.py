@@ -28,6 +28,10 @@ def receive_outdoor_temperature(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
+    print('Получены данные по температуре снаружи дома:')
+    print('=' * 50)
+    print(data)
+    print('=' * 50)
     if len(data.temperatures) != 4:
         raise HTTPException(status_code=400, detail="Exactly 4 temperature sensors required")
 
